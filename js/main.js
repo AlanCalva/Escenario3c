@@ -319,8 +319,8 @@ function teleportPlayerIfOob() {
 }
 
 // === Loader GLTF ===
-const loader = new GLTFLoader().setPath('../models/gltf/');
-loader.load('untitled.glb', (gltf) => {
+const loader = new GLTFLoader().setPath('./models/gltf/');
+loader.load('countryside_scene_free.glb', (gltf) => {
   scene.add(gltf.scene);
   worldOctree.fromGraphNode(gltf.scene);
 
