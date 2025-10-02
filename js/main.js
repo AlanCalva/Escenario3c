@@ -106,17 +106,20 @@ const vector3 = new THREE.Vector3();
 document.addEventListener('keydown', (event) => (keyStates[event.code] = true));
 document.addEventListener('keyup', (event) => (keyStates[event.code] = false));
 
-container.addEventListener('mousedown', () => {
-  document.body.requestPointerLock();
+// Pointer Lock sobre el CANVAS (no el body)
+const canvasEl = renderer.domElement;
+
+canvasEl.addEventListener('mousedown', () => {
+  canvasEl.requestPointerLock();
   mouseTime = performance.now();
 });
 
 document.addEventListener('mouseup', () => {
-  if (document.pointerLockElement !== null) throwBall();
+  if (document.pointerLockElement === canvasEl) throwBall();
 });
 
-document.body.addEventListener('mousemove', (event) => {
-  if (document.pointerLockElement === document.body) {
+document.addEventListener('mousemove', (event) => {
+  if (document.pointerLockElement === canvasEl) {
     camera.rotation.y -= event.movementX / 500;
     camera.rotation.x -= event.movementY / 500;
   }
@@ -127,6 +130,7 @@ window.addEventListener('resize', onWindowResize);
 function onWindowResize() {
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.updateProjectionMatrix();
+  renderer.setPixelRatio(window.devicePixelRatio); // nitidez HiDPI
   renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
@@ -199,9 +203,7 @@ function playerSphereCollision(sphere) {
 
     if (d2 < r2) {
       const normal = vector1.subVectors(point, sphere_center).normalize();
-      const v1 = vector2
-        .copy(normal)
-        .multiplyScalar(normal.dot(playerVelocity));
+      const v1 = vector2.copy(normal).multiplyScalar(normal.dot(playerVelocity));
       const v2 = vector3.copy(normal).multiplyScalar(normal.dot(sphere.velocity));
 
       playerVelocity.add(v2).sub(v1);
@@ -226,12 +228,8 @@ function spheresCollisions() {
         const normal = vector1
           .subVectors(s1.collider.center, s2.collider.center)
           .normalize();
-        const v1 = vector2
-          .copy(normal)
-          .multiplyScalar(normal.dot(s1.velocity));
-        const v2 = vector3
-          .copy(normal)
-          .multiplyScalar(normal.dot(s2.velocity));
+        const v1 = vector2.copy(normal).multiplyScalar(normal.dot(s1.velocity));
+        const v2 = vector3.copy(normal).multiplyScalar(normal.dot(s2.velocity));
 
         s1.velocity.add(v2).sub(v1);
         s2.velocity.add(v1).sub(v2);
@@ -291,21 +289,11 @@ function getSideVector() {
 function controls(deltaTime) {
   const speedDelta = deltaTime * (playerOnFloor ? 25 : 8);
 
-  if (keyStates['KeyW']) {
-    playerVelocity.add(getForwardVector().multiplyScalar(speedDelta));
-  }
-  if (keyStates['KeyS']) {
-    playerVelocity.add(getForwardVector().multiplyScalar(-speedDelta));
-  }
-  if (keyStates['KeyA']) {
-    playerVelocity.add(getSideVector().multiplyScalar(-speedDelta));
-  }
-  if (keyStates['KeyD']) {
-    playerVelocity.add(getSideVector().multiplyScalar(speedDelta));
-  }
-  if (playerOnFloor && keyStates['Space']) {
-    playerVelocity.y = 15;
-  }
+  if (keyStates['KeyW']) playerVelocity.add(getForwardVector().multiplyScalar(speedDelta));
+  if (keyStates['KeyS']) playerVelocity.add(getForwardVector().multiplyScalar(-speedDelta));
+  if (keyStates['KeyA']) playerVelocity.add(getSideVector().multiplyScalar(-speedDelta));
+  if (keyStates['KeyD']) playerVelocity.add(getSideVector().multiplyScalar(speedDelta));
+  if (playerOnFloor && keyStates['Space']) playerVelocity.y = 15;
 }
 
 function teleportPlayerIfOob() {
@@ -319,6 +307,7 @@ function teleportPlayerIfOob() {
 }
 
 // === Loader GLTF ===
+// Ruta RELATIVA para GitHub Pages de proyecto
 const loader = new GLTFLoader().setPath('./models/gltf/');
 loader.load('countryside_scene_free.glb', (gltf) => {
   scene.add(gltf.scene);
@@ -338,8 +327,12 @@ loader.load('countryside_scene_free.glb', (gltf) => {
 
   const gui = new GUI({ width: 200 });
   gui.add({ debug: false }, 'debug').onChange((value) => (helper.visible = value));
-});
 
+  // coloca la cámara en la posición inicial del jugador
+  camera.position.copy(playerCollider.end);
+}, undefined, (err) => {
+  console.error('Error cargando GLB:', err);
+});
 
 // === Animate Loop ===
 function animate() {
